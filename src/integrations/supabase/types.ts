@@ -694,6 +694,38 @@ export type Database = {
         }
         Relationships: []
       }
+      super_admin_sessions: {
+        Row: {
+          admin_id: string
+          created_at: string
+          expires_at: string
+          id: string
+          token_hash: string
+        }
+        Insert: {
+          admin_id: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          token_hash: string
+        }
+        Update: {
+          admin_id?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "super_admin_sessions_admin_id_fkey"
+            columns: ["admin_id"]
+            isOneToOne: false
+            referencedRelation: "super_admin_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -730,6 +762,13 @@ export type Database = {
       is_store_owner: {
         Args: { _store_id: string; _user_id: string }
         Returns: boolean
+      }
+      verify_super_admin: {
+        Args: { _password: string; _username: string }
+        Returns: {
+          admin_id: string
+          display_name: string
+        }[]
       }
     }
     Enums: {
