@@ -75,11 +75,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "دكاني — منصة SaaS للتجارة الإلكترونية" },
       { name: "description", content: "منصة SaaS مغربية لإنشاء المتاجر وإدارة الطلبات والدفع عند الاستلام." },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "دكاني — منصة SaaS للتجارة الإلكترونية" },
+      { property: "og:description", content: "منصة SaaS مغربية لإنشاء المتاجر وإدارة الطلبات والدفع عند الاستلام." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "دكاني — منصة SaaS للتجارة الإلكترونية" },
+      { name: "twitter:description", content: "منصة SaaS مغربية لإنشاء المتاجر وإدارة الطلبات والدفع عند الاستلام." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9bef162b-31f9-4859-b3e2-0b5b53d8f32f/id-preview-304e1019--af875e1f-0826-4a53-a972-060ca3b4fa90.lovable.app-1778994913808.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/9bef162b-31f9-4859-b3e2-0b5b53d8f32f/id-preview-304e1019--af875e1f-0826-4a53-a972-060ca3b4fa90.lovable.app-1778994913808.png" },
     ],
     links: [
       {
