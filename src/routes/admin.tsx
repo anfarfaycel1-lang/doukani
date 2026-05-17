@@ -9,7 +9,7 @@ export const Route = createFileRoute("/admin")({
   component: AdminPage,
 });
 
-type AdminData = Awaited<ReturnType<typeof getAdminDashboard>>;
+type AdminData = any;
 
 function AdminPage() {
   const loginFn = useServerFn(adminLogin);
