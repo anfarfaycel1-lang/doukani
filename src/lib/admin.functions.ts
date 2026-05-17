@@ -3,6 +3,7 @@ import { getCookie, setCookie, deleteCookie } from "@tanstack/react-start/server
 import { createHash, randomBytes } from "crypto";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import type { Json } from "@/integrations/supabase/types";
 
 const ADMIN_COOKIE = "doukani_super_admin";
 const SESSION_DAYS = 7;
@@ -210,7 +211,7 @@ export const updatePlatformContent = createServerFn({ method: "POST" })
       key: data.key,
       title_ar: data.title,
       body_ar: data.body,
-      data: data.data ?? {},
+      data: (data.data ?? {}) as Json,
       updated_at: new Date().toISOString(),
     });
     if (error) throw new Error("تعذر تحديث محتوى المنصة");
