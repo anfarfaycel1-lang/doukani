@@ -31,7 +31,10 @@ function StorefrontPage() {
   if (!data.store) return <main className="grid min-h-screen place-items-center"><h1 className="text-3xl font-black">المتجر غير متاح حالياً</h1></main>;
 
   const theme = data.store.store_templates?.preview_theme ?? "general-pro";
-  const featured = data.products.slice(0, 4);
+  const featured = data.products.filter((p: any) => p.is_featured).slice(0, 8);
+  const slides: Array<{ url: string; name: string; price: number; id: string }> = featured.flatMap((p: any) =>
+    (p.images ?? []).slice(0, 3).map((url: string) => ({ url, name: p.name, price: Number(p.price), id: `${p.id}-${url}` })),
+  );
 
   const add = (product: any) => setCart((items) => {
     const found = items.find((item) => item.productId === product.id);
