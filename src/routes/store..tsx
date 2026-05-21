@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { createCustomerOrder, getPublicStore, trackOrder } from "@/lib/public.functions";
-import { ShoppingCart, MessageCircle, Search, Truck } from "lucide-react";
+import { ShoppingCart, MessageCircle, Search, Truck, ChevronLeft, ChevronRight } from "lucide-react";
 
 export const Route = createFileRoute("/store/")({
   head: () => ({ meta: [{ title: "متجر دكاني" }, { name: "description", content: "متجر إلكتروني بدعم الدفع عند الاستلام وتتبع الطلب." }] }),
