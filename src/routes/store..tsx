@@ -23,8 +23,17 @@ function StorefrontPage() {
   const [orderMessage, setOrderMessage] = useState("");
   const [tracking, setTracking] = useState({ orderNumber: "", phone: "" });
   const [tracked, setTracked] = useState<any>(null);
+  const [slideIdx, setSlideIdx] = useState(0);
 
   useEffect(() => { loadFn({ data: { slug } }).then(setData); }, [slug]);
+  useEffect(() => {
+    if (!data) return;
+    const featured = data.products.filter((p: any) => p.is_featured).slice(0, 8);
+    const count = featured.flatMap((p: any) => (p.images ?? []).slice(0, 3)).length;
+    if (count < 2) return;
+    const id = setInterval(() => setSlideIdx((i) => (i + 1) % count), 3500);
+    return () => clearInterval(id);
+  }, [data]);
   const total = useMemo(() => cart.reduce((sum, item) => sum + item.price * item.quantity, 0), [cart]);
 
   if (!data) return <main className="grid min-h-screen place-items-center">جاري تحميل المتجر...</main>;
