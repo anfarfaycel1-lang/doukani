@@ -69,9 +69,42 @@ function StorefrontPage() {
       <section className="px-4 py-10">
         <div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[1.15fr_.85fr]">
           <div className="overflow-hidden rounded-3xl bg-primary text-primary-foreground shadow-2xl shadow-primary/20">
-            <div className="grid min-h-[360px] gap-4 p-8 md:grid-cols-2">
-              <div className="flex flex-col justify-center"><p className="text-sm font-bold opacity-80">سلايد شو المنتجات</p><h2 className="mt-3 text-5xl font-black">عروض مختارة من {data.store.name}</h2><p className="mt-4 opacity-85">طلب سريع من صفحة واحدة، دفع عند الاستلام، وتتبع فوري لحالة الطلب.</p></div>
-              <div className="grid grid-cols-2 gap-3">{featured.map((p: any) => <div key={p.id} className="overflow-hidden rounded-2xl bg-card/15 p-3"><div className="aspect-square rounded-xl bg-background/20 bg-cover bg-center" style={{ backgroundImage: p.images?.[0] ? `url(${p.images[0]})` : undefined }} /><b className="mt-2 block">{p.name}</b><span>{p.price} د.م</span></div>)}</div>
+            <div className="grid min-h-[360px] gap-4 p-6 md:grid-cols-[1fr_1.1fr] md:p-8">
+              <div className="flex flex-col justify-center">
+                <p className="text-sm font-bold opacity-80">عروض مميزة</p>
+                <h2 className="mt-3 text-4xl font-black md:text-5xl">عروض مختارة من {data.store.name}</h2>
+                <p className="mt-4 opacity-85">طلب سريع من صفحة واحدة، دفع عند الاستلام، وتتبع فوري لحالة الطلب.</p>
+                {slides.length > 0 && (
+                  <div className="mt-5 flex items-center gap-3">
+                    <div>
+                      <b className="block text-2xl">{slides[slideIdx % slides.length]?.name}</b>
+                      <span className="opacity-85">{slides[slideIdx % slides.length]?.price} د.م</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="relative overflow-hidden rounded-2xl bg-card/15">
+                {slides.length === 0 ? (
+                  <div className="grid h-full min-h-[280px] place-items-center opacity-70">أضف منتجات بصور لتظهر هنا</div>
+                ) : (
+                  <>
+                    {slides.map((s, i) => (
+                      <div
+                        key={s.id}
+                        className="absolute inset-0 bg-cover bg-center transition-opacity duration-700"
+                        style={{ backgroundImage: `url(${s.url})`, opacity: i === slideIdx % slides.length ? 1 : 0 }}
+                      />
+                    ))}
+                    <button onClick={() => setSlideIdx((i) => (i + slides.length - 1) % slides.length)} className="absolute top-1/2 right-3 -translate-y-1/2 rounded-full bg-background/70 p-2 text-foreground hover:bg-background"><ChevronRight className="h-4 w-4" /></button>
+                    <button onClick={() => setSlideIdx((i) => (i + 1) % slides.length)} className="absolute top-1/2 left-3 -translate-y-1/2 rounded-full bg-background/70 p-2 text-foreground hover:bg-background"><ChevronLeft className="h-4 w-4" /></button>
+                    <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1">
+                      {slides.map((s, i) => (
+                        <button key={s.id} onClick={() => setSlideIdx(i)} className={`h-1.5 rounded-full transition-all ${i === slideIdx % slides.length ? "w-6 bg-background" : "w-2 bg-background/50"}`} />
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
           <aside className="rounded-3xl border border-border bg-card p-5 text-card-foreground"><h2 className="flex items-center gap-2 text-xl font-black"><Search className="h-5 w-5" /> تتبع طلبك</h2><div className="mt-4 grid gap-2"><input className="h-11 rounded-xl border border-input bg-background px-3" placeholder="رقم الطلب" value={tracking.orderNumber} onChange={(e) => setTracking({ ...tracking, orderNumber: e.target.value })} /><input className="h-11 rounded-xl border border-input bg-background px-3" placeholder="الهاتف" value={tracking.phone} onChange={(e) => setTracking({ ...tracking, phone: e.target.value })} /><button className="btn-ghost justify-center" onClick={async () => setTracked((await trackFn({ data: tracking })).order)}>تتبع</button>{tracked && <p className="rounded-xl bg-secondary p-3 text-sm"><Truck className="inline h-4 w-4" /> الحالة: {tracked.status}</p>}</div></aside>
