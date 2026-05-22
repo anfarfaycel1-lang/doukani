@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type ReactNode } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import {
   adminLogin,
@@ -458,7 +458,7 @@ function FinanceCharts({ data }: { data: AdminData }) {
   );
 }
 
-function DataTable({ headers, children }: { headers: string[]; children: React.ReactNode }) {
+function DataTable({ headers, children }: { headers: string[]; children: ReactNode }) {
   return (
     <div className="mt-4 overflow-x-auto">
       <table className="w-full min-w-[760px] text-sm">
