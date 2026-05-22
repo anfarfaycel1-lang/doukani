@@ -15,6 +15,14 @@ export const getMerchantDashboard = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .upsert({ user_id: userId, full_name: "تاجر دكاني" }, { onConflict: "user_id", ignoreDuplicates: true }),
+      supabase
+        .from("user_roles")
+        .upsert({ user_id: userId, role: "merchant" }, { onConflict: "user_id,role", ignoreDuplicates: true }),
+    ]);
     const { data: stores } = await supabase
       .from("stores")
       .select("*, store_templates(*)")
@@ -56,6 +64,25 @@ export const getMerchantDashboard = createServerFn({ method: "GET" })
       stats: { sales, profit, orders: orderRows.length, customers: customers.data?.length ?? 0 },
       chart,
     };
+  });
+
+export const ensureMerchantAccount = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) => z.object({ fullName: z.string().max(160).optional() }).parse(input))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const [profile, role] = await Promise.all([
+      supabase.from("profiles").upsert(
+        { user_id: userId, full_name: data.fullName || "تاجر دكاني" },
+        { onConflict: "user_id", ignoreDuplicates: true },
+      ),
+      supabase.from("user_roles").upsert(
+        { user_id: userId, role: "merchant" },
+        { onConflict: "user_id,role", ignoreDuplicates: true },
+      ),
+    ]);
+    if (profile.error || role.error) throw new Error("تعذر تجهيز حساب التاجر");
+    return { ok: true };
   });
 
 export const createStore = createServerFn({ method: "POST" })
