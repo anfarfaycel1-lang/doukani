@@ -2,6 +2,8 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
+import { useServerFn } from "@tanstack/react-start";
+import { ensureMerchantAccount } from "@/lib/merchant.functions";
 import { Store, Mail, Lock, User, Chrome } from "lucide-react";
 
 export const Route = createFileRoute("/login")({
@@ -11,6 +13,7 @@ export const Route = createFileRoute("/login")({
 
 function LoginPage() {
   const navigate = useNavigate();
+  const ensureMerchantFn = useServerFn(ensureMerchantAccount);
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -27,7 +30,8 @@ function LoginPage() {
       : await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (result.error) return setMessage(result.error.message);
-    if (mode === "signup") return setMessage("تم إنشاء الحساب. تحقق من بريدك الإلكتروني ثم سجل الدخول.");
+    if (mode === "signup" && !result.data.session) return setMessage("تم إنشاء الحساب. تحقق من بريدك الإلكتروني ثم سجل الدخول.");
+    await ensureMerchantFn({ data: { fullName } });
     navigate({ to: "/dashboard" });
   };
 
