@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  createSupportTicket,
   createStore,
   deleteProduct,
   exportMerchantReport,
@@ -70,6 +71,7 @@ function DashboardPage() {
   const productFn = useServerFn(upsertProduct);
   const deleteFn = useServerFn(deleteProduct);
   const exportFn = useServerFn(exportMerchantReport);
+  const supportFn = useServerFn(createSupportTicket);
 
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState("");
@@ -77,7 +79,8 @@ function DashboardPage() {
   const [product, setProduct] = useState<ProductForm>(emptyProduct());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [tab, setTab] = useState<"overview" | "products" | "reports">("overview");
+  const [tab, setTab] = useState<"overview" | "products" | "reports" | "support">("overview");
+  const [support, setSupport] = useState({ name: "", email: "", phone: "", subject: "", message: "", priority: "normal" });
 
   const load = async () => setData(await loadFn());
   useEffect(() => {
@@ -178,6 +181,13 @@ function DashboardPage() {
     URL.revokeObjectURL(url);
   };
 
+  const sendSupport = async (event: FormEvent) => {
+    event.preventDefault();
+    await supportFn({ data: { ...support, storeId: data.store.id, priority: support.priority as "low" | "normal" | "high" | "urgent" } });
+    setSupport({ name: "", email: "", phone: "", subject: "", message: "", priority: "normal" });
+    setError("تم إرسال طلب الدعم الفني بنجاح");
+  };
+
   const chartData = useMemo(() => {
     if (!data?.chart) return [];
     return data.chart.map((row: any) => {
@@ -243,6 +253,7 @@ function DashboardPage() {
             ["overview", "نظرة عامة"],
             ["products", "إدارة المنتجات"],
             ["reports", "التقارير المالية"],
+            ["support", "الدعم الفني"],
           ] as const).map(([k, label]) => (
             <button
               key={k}
