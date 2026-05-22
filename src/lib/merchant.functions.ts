@@ -244,3 +244,34 @@ export const generateProductCopy = createServerFn({ method: "POST" })
     const json = await res.json();
     return { text: json.choices?.[0]?.message?.content ?? "" };
   });
+
+export const createSupportTicket = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input) =>
+    z
+      .object({
+        storeId: z.string().uuid().optional(),
+        name: z.string().trim().min(2).max(120),
+        email: z.string().email().optional().or(z.literal("")),
+        phone: z.string().max(40).optional(),
+        subject: z.string().trim().min(3).max(160),
+        message: z.string().trim().min(10).max(2000),
+        priority: z.enum(["low", "normal", "high", "urgent"]).default("normal"),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase.from("support_tickets").insert({
+      user_id: userId,
+      store_id: data.storeId ?? null,
+      name: data.name,
+      email: data.email || null,
+      phone: data.phone || null,
+      subject: data.subject,
+      message: data.message,
+      priority: data.priority,
+    });
+    if (error) throw new Error("تعذر إرسال تذكرة الدعم");
+    return { ok: true };
+  });
