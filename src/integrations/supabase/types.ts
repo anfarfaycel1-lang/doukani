@@ -47,6 +47,54 @@ export type Database = {
         }
         Relationships: []
       }
+      discount_coupons: {
+        Row: {
+          applies_to: Database["public"]["Enums"]["subscription_tier"] | null
+          code: string
+          created_at: string
+          discount_type: string
+          discount_value: number
+          ends_at: string | null
+          id: string
+          is_active: boolean
+          max_redemptions: number | null
+          redeemed_count: number
+          starts_at: string | null
+          title_ar: string
+          updated_at: string
+        }
+        Insert: {
+          applies_to?: Database["public"]["Enums"]["subscription_tier"] | null
+          code: string
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_redemptions?: number | null
+          redeemed_count?: number
+          starts_at?: string | null
+          title_ar: string
+          updated_at?: string
+        }
+        Update: {
+          applies_to?: Database["public"]["Enums"]["subscription_tier"] | null
+          code?: string
+          created_at?: string
+          discount_type?: string
+          discount_value?: number
+          ends_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_redemptions?: number | null
+          redeemed_count?: number
+          starts_at?: string | null
+          title_ar?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string
@@ -722,6 +770,62 @@ export type Database = {
             columns: ["admin_id"]
             isOneToOne: false
             referencedRelation: "super_admin_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      support_tickets: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          email: string | null
+          id: string
+          message: string
+          name: string
+          phone: string | null
+          priority: string
+          status: string
+          store_id: string | null
+          subject: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          message: string
+          name: string
+          phone?: string | null
+          priority?: string
+          status?: string
+          store_id?: string | null
+          subject: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          message?: string
+          name?: string
+          phone?: string | null
+          priority?: string
+          status?: string
+          store_id?: string | null
+          subject?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "support_tickets_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
             referencedColumns: ["id"]
           },
         ]

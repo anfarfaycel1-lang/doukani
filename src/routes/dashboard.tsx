@@ -1,9 +1,21 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { Area, AreaChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 import {
+  createSupportTicket,
   createStore,
   deleteProduct,
   exportMerchantReport,
@@ -70,14 +82,29 @@ function DashboardPage() {
   const productFn = useServerFn(upsertProduct);
   const deleteFn = useServerFn(deleteProduct);
   const exportFn = useServerFn(exportMerchantReport);
+  const supportFn = useServerFn(createSupportTicket);
 
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState("");
-  const [storeForm, setStoreForm] = useState({ name: "", businessType: "", city: "", whatsapp: "", taxNumber: "" });
+  const [storeForm, setStoreForm] = useState({
+    name: "",
+    businessType: "",
+    city: "",
+    whatsapp: "",
+    taxNumber: "",
+  });
   const [product, setProduct] = useState<ProductForm>(emptyProduct());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [tab, setTab] = useState<"overview" | "products" | "reports">("overview");
+  const [tab, setTab] = useState<"overview" | "products" | "reports" | "support">("overview");
+  const [support, setSupport] = useState({
+    name: "",
+    email: "",
+    phone: "",
+    subject: "",
+    message: "",
+    priority: "normal",
+  });
 
   const load = async () => setData(await loadFn());
   useEffect(() => {
@@ -123,7 +150,9 @@ function DashboardPage() {
       for (const file of Array.from(files).slice(0, 6)) {
         const ext = file.name.split(".").pop() ?? "jpg";
         const path = `${uid}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-        const { error: upErr } = await supabase.storage.from("product-images").upload(path, file, { cacheControl: "3600", upsert: false });
+        const { error: upErr } = await supabase.storage
+          .from("product-images")
+          .upload(path, file, { cacheControl: "3600", upsert: false });
         if (upErr) throw upErr;
         const { data: pub } = supabase.storage.from("product-images").getPublicUrl(path);
         urls.push(pub.publicUrl);
@@ -136,7 +165,8 @@ function DashboardPage() {
     }
   };
 
-  const removeImage = (url: string) => setProduct((p) => ({ ...p, images: p.images.filter((u) => u !== url) }));
+  const removeImage = (url: string) =>
+    setProduct((p) => ({ ...p, images: p.images.filter((u) => u !== url) }));
 
   const saveProduct = async (event: FormEvent) => {
     event.preventDefault();
@@ -178,11 +208,29 @@ function DashboardPage() {
     URL.revokeObjectURL(url);
   };
 
+  const sendSupport = async (event: FormEvent) => {
+    event.preventDefault();
+    await supportFn({
+      data: {
+        ...support,
+        storeId: data.store.id,
+        priority: support.priority as "low" | "normal" | "high" | "urgent",
+      },
+    });
+    setSupport({ name: "", email: "", phone: "", subject: "", message: "", priority: "normal" });
+    setError("تم إرسال طلب الدعم الفني بنجاح");
+  };
+
   const chartData = useMemo(() => {
     if (!data?.chart) return [];
     return data.chart.map((row: any) => {
-      const dayOrders = (data.orders ?? []).filter((o: any) => o.created_at?.slice(0, 10) === row.date);
-      const profit = dayOrders.reduce((s: number, o: any) => s + Number(o.total ?? 0) - Number(o.total_cost ?? 0), 0);
+      const dayOrders = (data.orders ?? []).filter(
+        (o: any) => o.created_at?.slice(0, 10) === row.date,
+      );
+      const profit = dayOrders.reduce(
+        (s: number, o: any) => s + Number(o.total ?? 0) - Number(o.total_cost ?? 0),
+        0,
+      );
       return { ...row, profit, day: row.date.slice(5) };
     });
   }, [data]);
@@ -197,15 +245,47 @@ function DashboardPage() {
   if (!data.store)
     return (
       <main className="min-h-screen px-4 py-8">
-        <form onSubmit={create} className="mx-auto max-w-2xl rounded-2xl border border-border bg-card p-8 shadow-xl shadow-primary/10">
+        <form
+          onSubmit={create}
+          className="mx-auto max-w-2xl rounded-2xl border border-border bg-card p-8 shadow-xl shadow-primary/10"
+        >
           <Store className="h-10 w-10 text-primary" />
           <h1 className="mt-4 text-3xl font-black">إنشاء متجرك في أقل من دقيقتين</h1>
           <div className="mt-6 grid gap-3 sm:grid-cols-2">
-            <input className="h-11 rounded-xl border border-input bg-background px-3" placeholder="اسم المتجر" value={storeForm.name} onChange={(e) => setStoreForm({ ...storeForm, name: e.target.value })} required />
-            <input className="h-11 rounded-xl border border-input bg-background px-3" placeholder="نوع النشاط" value={storeForm.businessType} onChange={(e) => setStoreForm({ ...storeForm, businessType: e.target.value })} required />
-            <input className="h-11 rounded-xl border border-input bg-background px-3" placeholder="المدينة" value={storeForm.city} onChange={(e) => setStoreForm({ ...storeForm, city: e.target.value })} required />
-            <input className="h-11 rounded-xl border border-input bg-background px-3" placeholder="واتساب" value={storeForm.whatsapp} onChange={(e) => setStoreForm({ ...storeForm, whatsapp: e.target.value })} required />
-            <input className="h-11 rounded-xl border border-input bg-background px-3 sm:col-span-2" placeholder="الرقم الضريبي اختياري" value={storeForm.taxNumber} onChange={(e) => setStoreForm({ ...storeForm, taxNumber: e.target.value })} />
+            <input
+              className="h-11 rounded-xl border border-input bg-background px-3"
+              placeholder="اسم المتجر"
+              value={storeForm.name}
+              onChange={(e) => setStoreForm({ ...storeForm, name: e.target.value })}
+              required
+            />
+            <input
+              className="h-11 rounded-xl border border-input bg-background px-3"
+              placeholder="نوع النشاط"
+              value={storeForm.businessType}
+              onChange={(e) => setStoreForm({ ...storeForm, businessType: e.target.value })}
+              required
+            />
+            <input
+              className="h-11 rounded-xl border border-input bg-background px-3"
+              placeholder="المدينة"
+              value={storeForm.city}
+              onChange={(e) => setStoreForm({ ...storeForm, city: e.target.value })}
+              required
+            />
+            <input
+              className="h-11 rounded-xl border border-input bg-background px-3"
+              placeholder="واتساب"
+              value={storeForm.whatsapp}
+              onChange={(e) => setStoreForm({ ...storeForm, whatsapp: e.target.value })}
+              required
+            />
+            <input
+              className="h-11 rounded-xl border border-input bg-background px-3 sm:col-span-2"
+              placeholder="الرقم الضريبي اختياري"
+              value={storeForm.taxNumber}
+              onChange={(e) => setStoreForm({ ...storeForm, taxNumber: e.target.value })}
+            />
           </div>
           <button className="btn-primary mt-5">إنشاء المتجر</button>
           {error && <p className="mt-3 text-destructive">{error}</p>}
@@ -226,10 +306,17 @@ function DashboardPage() {
         <header className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-card p-5">
           <div>
             <h1 className="text-3xl font-black">{data.store.name}</h1>
-            <p className="text-sm text-muted-foreground">رابط المتجر: /store/{data.store.slug} · الحالة: {data.store.status}</p>
+            <p className="text-sm text-muted-foreground">
+              رابط المتجر: /store/{data.store.slug} · الحالة: {data.store.status}
+            </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <a className="btn-ghost" href={`/store/${data.store.slug}`} target="_blank" rel="noreferrer">
+            <a
+              className="btn-ghost"
+              href={`/store/${data.store.slug}`}
+              target="_blank"
+              rel="noreferrer"
+            >
               <ExternalLink className="h-4 w-4" /> عرض المتجر
             </a>
             <button onClick={exportCsv} className="btn-primary">
@@ -239,11 +326,14 @@ function DashboardPage() {
         </header>
 
         <nav className="flex gap-2 rounded-2xl border border-border bg-card p-2">
-          {([
-            ["overview", "نظرة عامة"],
-            ["products", "إدارة المنتجات"],
-            ["reports", "التقارير المالية"],
-          ] as const).map(([k, label]) => (
+          {(
+            [
+              ["overview", "نظرة عامة"],
+              ["products", "إدارة المنتجات"],
+              ["reports", "التقارير المالية"],
+              ["support", "الدعم الفني"],
+            ] as const
+          ).map(([k, label]) => (
             <button
               key={k}
               onClick={() => setTab(k)}
@@ -261,7 +351,10 @@ function DashboardPage() {
                 <div key={label} className="rounded-2xl border border-border bg-card p-5">
                   <BarChart3 className={`h-5 w-5 text-${tone}`} />
                   <p className="mt-3 text-sm text-muted-foreground">{label}</p>
-                  <strong className="text-3xl">{Number(value).toLocaleString()} {label.includes("عدد") || label === "العملاء" ? "" : "د.م"}</strong>
+                  <strong className="text-3xl">
+                    {Number(value).toLocaleString()}{" "}
+                    {label.includes("عدد") || label === "العملاء" ? "" : "د.م"}
+                  </strong>
                 </div>
               ))}
             </section>
@@ -286,8 +379,20 @@ function DashboardPage() {
                     <YAxis />
                     <Tooltip />
                     <Legend />
-                    <Area type="monotone" dataKey="sales" name="المبيعات" stroke="var(--primary)" fill="url(#g1)" />
-                    <Area type="monotone" dataKey="profit" name="صافي الربح" stroke="var(--gold)" fill="url(#g2)" />
+                    <Area
+                      type="monotone"
+                      dataKey="sales"
+                      name="المبيعات"
+                      stroke="var(--primary)"
+                      fill="url(#g1)"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="profit"
+                      name="صافي الربح"
+                      stroke="var(--gold)"
+                      fill="url(#g2)"
+                    />
                   </AreaChart>
                 </ResponsiveContainer>
               </div>
@@ -299,7 +404,12 @@ function DashboardPage() {
                     <XAxis dataKey="day" reversed />
                     <YAxis allowDecimals={false} />
                     <Tooltip />
-                    <Bar dataKey="orders" name="الطلبات" fill="var(--primary-light)" radius={[8, 8, 0, 0]} />
+                    <Bar
+                      dataKey="orders"
+                      name="الطلبات"
+                      fill="var(--primary-light)"
+                      radius={[8, 8, 0, 0]}
+                    />
                   </BarChart>
                 </ResponsiveContainer>
               </div>
@@ -311,7 +421,8 @@ function DashboardPage() {
                   <TriangleAlert className="h-5 w-5" /> تنبيهات انخفاض المخزون
                 </h2>
                 <p className="mt-2 text-sm text-muted-foreground">
-                  منتجات بحاجة لإعادة التموين: {data.lowStock.map((p: any) => `${p.name} (${p.stock})`).join("، ")}
+                  منتجات بحاجة لإعادة التموين:{" "}
+                  {data.lowStock.map((p: any) => `${p.name} (${p.stock})`).join("، ")}
                 </p>
               </section>
             )}
@@ -340,14 +451,26 @@ function DashboardPage() {
                       <td className="p-2 font-bold">{o.order_number}</td>
                       <td className="p-2">{o.city ?? "—"}</td>
                       <td className="p-2">{Number(o.total).toLocaleString()} د.م</td>
-                      <td className="p-2 text-muted-foreground">{Number(o.total_cost).toLocaleString()} د.م</td>
-                      <td className="p-2 text-primary font-bold">{(Number(o.total) - Number(o.total_cost)).toLocaleString()} د.م</td>
-                      <td className="p-2"><span className="rounded-full bg-secondary px-2 py-1 text-xs">{o.status}</span></td>
+                      <td className="p-2 text-muted-foreground">
+                        {Number(o.total_cost).toLocaleString()} د.م
+                      </td>
+                      <td className="p-2 text-primary font-bold">
+                        {(Number(o.total) - Number(o.total_cost)).toLocaleString()} د.م
+                      </td>
+                      <td className="p-2">
+                        <span className="rounded-full bg-secondary px-2 py-1 text-xs">
+                          {o.status}
+                        </span>
+                      </td>
                       <td className="p-2 text-muted-foreground">{o.created_at?.slice(0, 10)}</td>
                     </tr>
                   ))}
                   {data.orders.length === 0 && (
-                    <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">لا توجد طلبات بعد</td></tr>
+                    <tr>
+                      <td colSpan={7} className="p-6 text-center text-muted-foreground">
+                        لا توجد طلبات بعد
+                      </td>
+                    </tr>
                   )}
                 </tbody>
               </table>
@@ -364,50 +487,113 @@ function DashboardPage() {
               </h2>
 
               <div className="mt-4 grid gap-3">
-                <input className="h-11 rounded-xl border border-input bg-background px-3" placeholder="اسم المنتج" value={product.name} onChange={(e) => setProduct({ ...product, name: e.target.value })} required />
-                <textarea className="min-h-[90px] rounded-xl border border-input bg-background p-3" placeholder="وصف المنتج" value={product.description} onChange={(e) => setProduct({ ...product, description: e.target.value })} />
+                <input
+                  className="h-11 rounded-xl border border-input bg-background px-3"
+                  placeholder="اسم المنتج"
+                  value={product.name}
+                  onChange={(e) => setProduct({ ...product, name: e.target.value })}
+                  required
+                />
+                <textarea
+                  className="min-h-[90px] rounded-xl border border-input bg-background p-3"
+                  placeholder="وصف المنتج"
+                  value={product.description}
+                  onChange={(e) => setProduct({ ...product, description: e.target.value })}
+                />
 
                 <div className="grid grid-cols-2 gap-3">
-                  <label className="text-sm">السعر (د.م)
-                    <input type="number" step="0.01" className="mt-1 h-11 w-full rounded-xl border border-input bg-background px-3" value={product.price} onChange={(e) => setProduct({ ...product, price: Number(e.target.value) })} />
+                  <label className="text-sm">
+                    السعر (د.م)
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="mt-1 h-11 w-full rounded-xl border border-input bg-background px-3"
+                      value={product.price}
+                      onChange={(e) => setProduct({ ...product, price: Number(e.target.value) })}
+                    />
                   </label>
-                  <label className="text-sm">التكلفة (د.م)
-                    <input type="number" step="0.01" className="mt-1 h-11 w-full rounded-xl border border-input bg-background px-3" value={product.cost} onChange={(e) => setProduct({ ...product, cost: Number(e.target.value) })} />
+                  <label className="text-sm">
+                    التكلفة (د.م)
+                    <input
+                      type="number"
+                      step="0.01"
+                      className="mt-1 h-11 w-full rounded-xl border border-input bg-background px-3"
+                      value={product.cost}
+                      onChange={(e) => setProduct({ ...product, cost: Number(e.target.value) })}
+                    />
                   </label>
-                  <label className="text-sm">المخزون
-                    <input type="number" className="mt-1 h-11 w-full rounded-xl border border-input bg-background px-3" value={product.stock} onChange={(e) => setProduct({ ...product, stock: Number(e.target.value) })} />
+                  <label className="text-sm">
+                    المخزون
+                    <input
+                      type="number"
+                      className="mt-1 h-11 w-full rounded-xl border border-input bg-background px-3"
+                      value={product.stock}
+                      onChange={(e) => setProduct({ ...product, stock: Number(e.target.value) })}
+                    />
                   </label>
-                  <label className="text-sm">تنبيه عند المخزون
-                    <input type="number" className="mt-1 h-11 w-full rounded-xl border border-input bg-background px-3" value={product.lowStockThreshold} onChange={(e) => setProduct({ ...product, lowStockThreshold: Number(e.target.value) })} />
+                  <label className="text-sm">
+                    تنبيه عند المخزون
+                    <input
+                      type="number"
+                      className="mt-1 h-11 w-full rounded-xl border border-input bg-background px-3"
+                      value={product.lowStockThreshold}
+                      onChange={(e) =>
+                        setProduct({ ...product, lowStockThreshold: Number(e.target.value) })
+                      }
+                    />
                   </label>
                 </div>
 
                 <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={product.isFeatured} onChange={(e) => setProduct({ ...product, isFeatured: e.target.checked })} />
+                  <input
+                    type="checkbox"
+                    checked={product.isFeatured}
+                    onChange={(e) => setProduct({ ...product, isFeatured: e.target.checked })}
+                  />
                   ضمن السلايد شو في القالب
                 </label>
 
                 <div className="rounded-xl border border-dashed border-border bg-secondary/40 p-4">
                   <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-sm font-bold"><ImageIcon className="h-4 w-4" /> صور المنتج ({product.images.length}/8)</span>
-                    <label className={`btn-ghost cursor-pointer py-2 text-sm ${uploading ? "opacity-50" : ""}`}>
+                    <span className="flex items-center gap-2 text-sm font-bold">
+                      <ImageIcon className="h-4 w-4" /> صور المنتج ({product.images.length}/8)
+                    </span>
+                    <label
+                      className={`btn-ghost cursor-pointer py-2 text-sm ${uploading ? "opacity-50" : ""}`}
+                    >
                       <Upload className="h-4 w-4" /> {uploading ? "يتم الرفع..." : "رفع صور"}
-                      <input type="file" accept="image/*" multiple hidden onChange={(e) => uploadImages(e.target.files)} disabled={uploading} />
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        hidden
+                        onChange={(e) => uploadImages(e.target.files)}
+                        disabled={uploading}
+                      />
                     </label>
                   </div>
                   {product.images.length > 0 && (
                     <div className="mt-3 grid grid-cols-4 gap-2">
                       {product.images.map((url) => (
-                        <div key={url} className="group relative aspect-square overflow-hidden rounded-lg border border-border">
+                        <div
+                          key={url}
+                          className="group relative aspect-square overflow-hidden rounded-lg border border-border"
+                        >
                           <img src={url} alt="" className="h-full w-full object-cover" />
-                          <button type="button" onClick={() => removeImage(url)} className="absolute top-1 left-1 rounded-full bg-destructive p-1 text-destructive-foreground opacity-0 transition group-hover:opacity-100">
+                          <button
+                            type="button"
+                            onClick={() => removeImage(url)}
+                            className="absolute top-1 left-1 rounded-full bg-destructive p-1 text-destructive-foreground opacity-0 transition group-hover:opacity-100"
+                          >
                             <X className="h-3 w-3" />
                           </button>
                         </div>
                       ))}
                     </div>
                   )}
-                  <p className="mt-2 text-xs text-muted-foreground">تظهر الصورة الأولى في بطاقة المنتج وكل الصور تعمل كسلايد شو في القالب.</p>
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    تظهر الصورة الأولى في بطاقة المنتج وكل الصور تعمل كسلايد شو في القالب.
+                  </p>
                 </div>
 
                 <div className="flex gap-2">
@@ -416,7 +602,9 @@ function DashboardPage() {
                     {editingId ? "حفظ التعديلات" : "إضافة المنتج"}
                   </button>
                   {editingId && (
-                    <button type="button" onClick={resetProduct} className="btn-ghost">إلغاء</button>
+                    <button type="button" onClick={resetProduct} className="btn-ghost">
+                      إلغاء
+                    </button>
                   )}
                 </div>
                 {error && <p className="text-sm text-destructive">{error}</p>}
@@ -424,26 +612,120 @@ function DashboardPage() {
             </form>
 
             <div className="rounded-2xl border border-border bg-card p-5">
-              <h2 className="flex items-center gap-2 text-xl font-black"><Box className="h-5 w-5" /> منتجاتك ({data.products.length})</h2>
+              <h2 className="flex items-center gap-2 text-xl font-black">
+                <Box className="h-5 w-5" /> منتجاتك ({data.products.length})
+              </h2>
               <div className="mt-4 space-y-3">
-                {data.products.length === 0 && <p className="rounded-xl bg-secondary p-4 text-sm text-muted-foreground">لم تضف أي منتج بعد. أضف أول منتج من النموذج بالجانب.</p>}
+                {data.products.length === 0 && (
+                  <p className="rounded-xl bg-secondary p-4 text-sm text-muted-foreground">
+                    لم تضف أي منتج بعد. أضف أول منتج من النموذج بالجانب.
+                  </p>
+                )}
                 {data.products.map((p: any) => (
-                  <div key={p.id} className={`flex items-center gap-3 rounded-xl border p-3 transition ${editingId === p.id ? "border-primary bg-primary/5" : "border-border bg-secondary/40"}`}>
-                    <div className="h-16 w-16 flex-none overflow-hidden rounded-lg bg-muted bg-cover bg-center" style={{ backgroundImage: p.images?.[0] ? `url(${p.images[0]})` : undefined }}>
-                      {!p.images?.[0] && <div className="grid h-full w-full place-items-center text-muted-foreground"><ImageIcon className="h-5 w-5" /></div>}
+                  <div
+                    key={p.id}
+                    className={`flex items-center gap-3 rounded-xl border p-3 transition ${editingId === p.id ? "border-primary bg-primary/5" : "border-border bg-secondary/40"}`}
+                  >
+                    <div
+                      className="h-16 w-16 flex-none overflow-hidden rounded-lg bg-muted bg-cover bg-center"
+                      style={{ backgroundImage: p.images?.[0] ? `url(${p.images[0]})` : undefined }}
+                    >
+                      {!p.images?.[0] && (
+                        <div className="grid h-full w-full place-items-center text-muted-foreground">
+                          <ImageIcon className="h-5 w-5" />
+                        </div>
+                      )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <b className="block truncate">{p.name}</b>
-                      <p className="text-xs text-muted-foreground">{Number(p.price).toLocaleString()} د.م · مخزون {p.stock} · {p.images?.length ?? 0} صورة{p.is_featured ? " · مميز" : ""}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {Number(p.price).toLocaleString()} د.م · مخزون {p.stock} ·{" "}
+                        {p.images?.length ?? 0} صورة{p.is_featured ? " · مميز" : ""}
+                      </p>
                     </div>
                     <div className="flex gap-1">
-                      <button onClick={() => startEdit(p)} className="rounded-lg p-2 text-primary hover:bg-primary/10" title="تعديل"><Pencil className="h-4 w-4" /></button>
-                      <button onClick={() => remove(p.id)} className="rounded-lg p-2 text-destructive hover:bg-destructive/10" title="حذف"><Trash2 className="h-4 w-4" /></button>
+                      <button
+                        onClick={() => startEdit(p)}
+                        className="rounded-lg p-2 text-primary hover:bg-primary/10"
+                        title="تعديل"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => remove(p.id)}
+                        className="rounded-lg p-2 text-destructive hover:bg-destructive/10"
+                        title="حذف"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
+          </section>
+        )}
+
+        {tab === "support" && (
+          <section className="rounded-2xl border border-border bg-card p-5">
+            <h2 className="text-xl font-black">الدعم الفني</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              أرسل طلبًا للإدارة وسيظهر مباشرة في لوحة مدير النظام.
+            </p>
+            <form onSubmit={sendSupport} className="mt-5 grid gap-3 md:grid-cols-2">
+              <input
+                className="h-11 rounded-xl border border-input bg-background px-3"
+                placeholder="الاسم"
+                value={support.name}
+                onChange={(e) => setSupport({ ...support, name: e.target.value })}
+                required
+              />
+              <input
+                type="email"
+                className="h-11 rounded-xl border border-input bg-background px-3"
+                placeholder="البريد"
+                value={support.email}
+                onChange={(e) => setSupport({ ...support, email: e.target.value })}
+              />
+              <input
+                className="h-11 rounded-xl border border-input bg-background px-3"
+                placeholder="الهاتف"
+                value={support.phone}
+                onChange={(e) => setSupport({ ...support, phone: e.target.value })}
+              />
+              <select
+                className="h-11 rounded-xl border border-input bg-background px-3"
+                value={support.priority}
+                onChange={(e) => setSupport({ ...support, priority: e.target.value })}
+              >
+                <option value="low">منخفضة</option>
+                <option value="normal">عادية</option>
+                <option value="high">مرتفعة</option>
+                <option value="urgent">عاجلة</option>
+              </select>
+              <input
+                className="h-11 rounded-xl border border-input bg-background px-3 md:col-span-2"
+                placeholder="الموضوع"
+                value={support.subject}
+                onChange={(e) => setSupport({ ...support, subject: e.target.value })}
+                required
+              />
+              <textarea
+                className="min-h-[130px] rounded-xl border border-input bg-background p-3 md:col-span-2"
+                placeholder="اشرح المشكلة أو الطلب"
+                value={support.message}
+                onChange={(e) => setSupport({ ...support, message: e.target.value })}
+                required
+              />
+              <button className="btn-primary justify-center md:col-span-2">
+                إرسال للدعم الفني
+              </button>
+            </form>
+            {error && (
+              <p className="mt-3 rounded-xl bg-secondary p-3 text-sm text-muted-foreground">
+                {error}
+              </p>
+            )}
           </section>
         )}
       </div>
