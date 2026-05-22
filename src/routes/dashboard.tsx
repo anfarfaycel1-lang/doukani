@@ -457,6 +457,28 @@ function DashboardPage() {
             </div>
           </section>
         )}
+
+        {tab === "support" && (
+          <section className="rounded-2xl border border-border bg-card p-5">
+            <h2 className="text-xl font-black">الدعم الفني</h2>
+            <p className="mt-1 text-sm text-muted-foreground">أرسل طلبًا للإدارة وسيظهر مباشرة في لوحة مدير النظام.</p>
+            <form onSubmit={sendSupport} className="mt-5 grid gap-3 md:grid-cols-2">
+              <input className="h-11 rounded-xl border border-input bg-background px-3" placeholder="الاسم" value={support.name} onChange={(e) => setSupport({ ...support, name: e.target.value })} required />
+              <input type="email" className="h-11 rounded-xl border border-input bg-background px-3" placeholder="البريد" value={support.email} onChange={(e) => setSupport({ ...support, email: e.target.value })} />
+              <input className="h-11 rounded-xl border border-input bg-background px-3" placeholder="الهاتف" value={support.phone} onChange={(e) => setSupport({ ...support, phone: e.target.value })} />
+              <select className="h-11 rounded-xl border border-input bg-background px-3" value={support.priority} onChange={(e) => setSupport({ ...support, priority: e.target.value })}>
+                <option value="low">منخفضة</option>
+                <option value="normal">عادية</option>
+                <option value="high">مرتفعة</option>
+                <option value="urgent">عاجلة</option>
+              </select>
+              <input className="h-11 rounded-xl border border-input bg-background px-3 md:col-span-2" placeholder="الموضوع" value={support.subject} onChange={(e) => setSupport({ ...support, subject: e.target.value })} required />
+              <textarea className="min-h-[130px] rounded-xl border border-input bg-background p-3 md:col-span-2" placeholder="اشرح المشكلة أو الطلب" value={support.message} onChange={(e) => setSupport({ ...support, message: e.target.value })} required />
+              <button className="btn-primary justify-center md:col-span-2">إرسال للدعم الفني</button>
+            </form>
+            {error && <p className="mt-3 rounded-xl bg-secondary p-3 text-sm text-muted-foreground">{error}</p>}
+          </section>
+        )}
       </div>
     </main>
   );
