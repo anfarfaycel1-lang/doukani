@@ -32,6 +32,17 @@ async function requireAdminSession() {
   return data;
 }
 
+const couponSchema = z.object({
+  id: z.string().uuid().optional(),
+  code: z.string().trim().min(3).max(40).regex(/^[A-Za-z0-9_-]+$/),
+  title: z.string().trim().min(2).max(160),
+  discountType: z.enum(["percentage", "fixed"]),
+  discountValue: z.number().min(0).max(100000),
+  appliesTo: z.enum(["free", "starter", "pro", "enterprise"]).nullable().optional(),
+  maxRedemptions: z.number().int().min(0).max(1000000).nullable().optional(),
+  isActive: z.boolean(),
+});
+
 export const adminLogin = createServerFn({ method: "POST" })
   .inputValidator((input) =>
     z
@@ -89,38 +100,81 @@ export const adminLogout = createServerFn({ method: "POST" }).handler(async () =
 export const getAdminDashboard = createServerFn({ method: "GET" }).handler(async () => {
   await requireAdminSession();
 
-  const [stores, products, orders, contacts, plans, templates, ads, content, reviews] = await Promise.all([
-    supabaseAdmin.from("stores").select("*", { count: "exact" }).order("created_at", { ascending: false }).limit(12),
-    supabaseAdmin.from("products").select("id", { count: "exact", head: true }),
-    supabaseAdmin.from("orders").select("id,total,total_cost,status,created_at", { count: "exact" }).order("created_at", { ascending: false }).limit(200),
-    supabaseAdmin.from("contact_messages").select("*", { count: "exact" }).order("created_at", { ascending: false }).limit(10),
+  const [stores, products, orders, contacts, plans, templates, ads, content, reviews, coupons, tickets, customers] = await Promise.all([
+    supabaseAdmin.from("stores").select("*, store_templates(*)", { count: "exact" }).order("created_at", { ascending: false }).limit(100),
+    supabaseAdmin.from("products").select("*", { count: "exact" }).order("created_at", { ascending: false }).limit(200),
+    supabaseAdmin.from("orders").select("*, stores(name, slug), order_items(*)", { count: "exact" }).order("created_at", { ascending: false }).limit(300),
+    supabaseAdmin.from("contact_messages").select("*", { count: "exact" }).order("created_at", { ascending: false }).limit(100),
     supabaseAdmin.from("subscription_plans").select("*").order("monthly_price", { ascending: true }),
     supabaseAdmin.from("store_templates").select("*").order("sort_order", { ascending: true }),
-    supabaseAdmin.from("platform_ads").select("*").order("created_at", { ascending: false }).limit(10),
+    supabaseAdmin.from("platform_ads").select("*").order("created_at", { ascending: false }).limit(100),
     supabaseAdmin.from("platform_content").select("*"),
-    supabaseAdmin.from("store_reviews").select("*", { count: "exact" }).order("created_at", { ascending: false }).limit(10),
+    supabaseAdmin.from("store_reviews").select("*", { count: "exact" }).order("created_at", { ascending: false }).limit(50),
+    supabaseAdmin.from("discount_coupons").select("*").order("created_at", { ascending: false }).limit(100),
+    supabaseAdmin.from("support_tickets").select("*, stores(name, slug)", { count: "exact" }).order("created_at", { ascending: false }).limit(100),
+    supabaseAdmin.from("store_customers").select("id", { count: "exact", head: true }),
   ]);
 
   const orderRows = orders.data ?? [];
+  const productRows = products.data ?? [];
+  const storeRows = stores.data ?? [];
   const revenue = orderRows.reduce((sum, order) => sum + Number(order.total ?? 0), 0);
   const profit = orderRows.reduce((sum, order) => sum + Number(order.total ?? 0) - Number(order.total_cost ?? 0), 0);
+  const monthlyRevenue = orderRows
+    .filter((order) => new Date(order.created_at).getTime() > Date.now() - 30 * 24 * 60 * 60 * 1000)
+    .reduce((sum, order) => sum + Number(order.total ?? 0), 0);
+  const financeByStore = storeRows.map((store) => {
+    const storeOrders = orderRows.filter((order) => order.store_id === store.id);
+    const sales = storeOrders.reduce((sum, order) => sum + Number(order.total ?? 0), 0);
+    const costs = storeOrders.reduce((sum, order) => sum + Number(order.total_cost ?? 0), 0);
+    return {
+      storeId: store.id,
+      name: store.name,
+      slug: store.slug,
+      status: store.status,
+      orders: storeOrders.length,
+      sales,
+      profit: sales - costs,
+      products: productRows.filter((product) => product.store_id === store.id).length,
+    };
+  });
+
+  const chart = Array.from({ length: 14 }).map((_, index) => {
+    const date = new Date();
+    date.setDate(date.getDate() - (13 - index));
+    const key = date.toISOString().slice(0, 10);
+    const dayOrders = orderRows.filter((order) => order.created_at?.slice(0, 10) === key);
+    const sales = dayOrders.reduce((sum, order) => sum + Number(order.total ?? 0), 0);
+    const cost = dayOrders.reduce((sum, order) => sum + Number(order.total_cost ?? 0), 0);
+    return { date: key, day: key.slice(5), sales, profit: sales - cost, orders: dayOrders.length };
+  });
 
   return {
     counts: {
-      stores: stores.count ?? stores.data?.length ?? 0,
-      products: products.count ?? 0,
+      stores: stores.count ?? storeRows.length,
+      products: products.count ?? productRows.length,
       orders: orders.count ?? orderRows.length,
       contacts: contacts.count ?? contacts.data?.length ?? 0,
       reviews: reviews.count ?? reviews.data?.length ?? 0,
+      tickets: tickets.count ?? tickets.data?.length ?? 0,
+      customers: customers.count ?? 0,
+      suspended: storeRows.filter((store) => store.status === "suspended").length,
+      pending: storeRows.filter((store) => store.status === "pending_verification").length,
     },
-    finance: { revenue, profit },
-    stores: stores.data ?? [],
+    finance: { revenue, profit, monthlyRevenue, averageOrder: orderRows.length ? revenue / orderRows.length : 0 },
+    chart,
+    financeByStore,
+    stores: storeRows,
+    products: productRows,
+    orders: orderRows,
     plans: plans.data ?? [],
     templates: templates.data ?? [],
     ads: ads.data ?? [],
     content: content.data ?? [],
     messages: contacts.data ?? [],
     reviews: reviews.data ?? [],
+    coupons: coupons.data ?? [],
+    tickets: tickets.data ?? [],
   };
 });
 
@@ -139,11 +193,47 @@ export const updateStoreModeration = createServerFn({ method: "POST" })
     const patch = {
       status: data.status,
       rejection_reason: data.status === "rejected" ? data.reason ?? null : null,
-      banned_reason: data.status === "suspended" ? data.reason ?? null : null,
+      banned_reason: data.status === "suspended" ? data.reason ?? "مخالفة شروط المنصة" : null,
       approved_at: data.status === "active" ? new Date().toISOString() : null,
     };
     const { error } = await supabaseAdmin.from("stores").update(patch).eq("id", data.storeId);
     if (error) throw new Error("تعذر تحديث حالة المتجر");
+    return { ok: true };
+  });
+
+export const updateStoreSubscription = createServerFn({ method: "POST" })
+  .inputValidator((input) =>
+    z.object({ storeId: z.string().uuid(), tier: z.enum(["free", "starter", "pro", "enterprise"]) }).parse(input),
+  )
+  .handler(async ({ data }) => {
+    await requireAdminSession();
+    const { error } = await supabaseAdmin.from("stores").update({ subscription_tier: data.tier }).eq("id", data.storeId);
+    if (error) throw new Error("تعذر ترقية المتجر");
+    return { ok: true };
+  });
+
+export const updateOrderStatus = createServerFn({ method: "POST" })
+  .inputValidator((input) =>
+    z
+      .object({
+        orderId: z.string().uuid(),
+        status: z.enum(["pending", "confirmed", "processing", "shipped", "delivered", "returned", "cancelled"]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    await requireAdminSession();
+    const { error } = await supabaseAdmin.from("orders").update({ status: data.status }).eq("id", data.orderId);
+    if (error) throw new Error("تعذر تحديث الطلب");
+    return { ok: true };
+  });
+
+export const toggleProductVisibility = createServerFn({ method: "POST" })
+  .inputValidator((input) => z.object({ productId: z.string().uuid(), isActive: z.boolean() }).parse(input))
+  .handler(async ({ data }) => {
+    await requireAdminSession();
+    const { error } = await supabaseAdmin.from("products").update({ is_active: data.isActive }).eq("id", data.productId);
+    if (error) throw new Error("تعذر تحديث المنتج");
     return { ok: true };
   });
 
@@ -155,7 +245,10 @@ export const updatePlanPricing = createServerFn({ method: "POST" })
         monthlyPrice: z.number().min(0).max(100000),
         productLimit: z.number().int().min(0).max(1000000),
         aiCredits: z.number().int().min(0).max(1000000),
+        staffLimit: z.number().int().min(1).max(10000).optional(),
         bankTransferEnabled: z.boolean(),
+        advancedAnalytics: z.boolean().optional(),
+        customDomain: z.boolean().optional(),
       })
       .parse(input),
   )
@@ -167,7 +260,10 @@ export const updatePlanPricing = createServerFn({ method: "POST" })
         monthly_price: data.monthlyPrice,
         product_limit: data.productLimit,
         ai_credits: data.aiCredits,
+        staff_limit: data.staffLimit,
         bank_transfer_enabled: data.bankTransferEnabled,
+        advanced_analytics: data.advancedAnalytics,
+        custom_domain: data.customDomain,
       })
       .eq("id", data.planId);
     if (error) throw new Error("تعذر تحديث سعر الاشتراك");
@@ -226,6 +322,8 @@ export const upsertPlatformAd = createServerFn({ method: "POST" })
         title: z.string().min(2).max(160),
         description: z.string().max(500).optional(),
         targetUrl: z.string().url().optional().or(z.literal("")),
+        imageUrl: z.string().url().optional().or(z.literal("")),
+        placement: z.string().min(2).max(80).optional(),
         isActive: z.boolean(),
       })
       .parse(input),
@@ -237,9 +335,66 @@ export const upsertPlatformAd = createServerFn({ method: "POST" })
       title_ar: data.title,
       description_ar: data.description ?? null,
       target_url: data.targetUrl || null,
-      placement: "home",
+      image_url: data.imageUrl || null,
+      placement: data.placement ?? "home",
       is_active: data.isActive,
     });
     if (error) throw new Error("تعذر حفظ الإعلان");
+    return { ok: true };
+  });
+
+export const upsertDiscountCoupon = createServerFn({ method: "POST" })
+  .inputValidator((input) => couponSchema.parse(input))
+  .handler(async ({ data }) => {
+    await requireAdminSession();
+    const { error } = await supabaseAdmin.from("discount_coupons").upsert({
+      id: data.id,
+      code: data.code.toUpperCase(),
+      title_ar: data.title,
+      discount_type: data.discountType,
+      discount_value: data.discountValue,
+      applies_to: data.appliesTo ?? null,
+      max_redemptions: data.maxRedemptions ?? null,
+      is_active: data.isActive,
+    });
+    if (error) throw new Error("تعذر حفظ الكوبون");
+    return { ok: true };
+  });
+
+export const deleteDiscountCoupon = createServerFn({ method: "POST" })
+  .inputValidator((input) => z.object({ couponId: z.string().uuid() }).parse(input))
+  .handler(async ({ data }) => {
+    await requireAdminSession();
+    const { error } = await supabaseAdmin.from("discount_coupons").delete().eq("id", data.couponId);
+    if (error) throw new Error("تعذر حذف الكوبون");
+    return { ok: true };
+  });
+
+export const updateSupportTicket = createServerFn({ method: "POST" })
+  .inputValidator((input) =>
+    z
+      .object({
+        ticketId: z.string().uuid(),
+        status: z.enum(["open", "in_progress", "resolved", "closed"]),
+        adminNotes: z.string().max(2000).optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    await requireAdminSession();
+    const { error } = await supabaseAdmin
+      .from("support_tickets")
+      .update({ status: data.status, admin_notes: data.adminNotes ?? null })
+      .eq("id", data.ticketId);
+    if (error) throw new Error("تعذر تحديث تذكرة الدعم");
+    return { ok: true };
+  });
+
+export const markContactMessage = createServerFn({ method: "POST" })
+  .inputValidator((input) => z.object({ messageId: z.string().uuid(), isRead: z.boolean() }).parse(input))
+  .handler(async ({ data }) => {
+    await requireAdminSession();
+    const { error } = await supabaseAdmin.from("contact_messages").update({ is_read: data.isRead }).eq("id", data.messageId);
+    if (error) throw new Error("تعذر تحديث رسالة التواصل");
     return { ok: true };
   });
