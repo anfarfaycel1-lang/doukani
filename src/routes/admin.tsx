@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { Fragment, useEffect, useState, type FormEvent, type ReactNode } from "react";
 import {
   Area,
   AreaChart,
