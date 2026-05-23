@@ -96,7 +96,10 @@ function DashboardPage() {
   const [product, setProduct] = useState<ProductForm>(emptyProduct());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [tab, setTab] = useState<"overview" | "products" | "reports" | "support">("overview");
+  const [tab, setTab] = useState<
+    "overview" | "products" | "orders" | "customers" | "reports" | "support"
+  >("overview");
+
   const [support, setSupport] = useState({
     name: "",
     email: "",
