@@ -498,6 +498,36 @@ export type Database = {
           },
         ]
       }
+      store_moderation_logs: {
+        Row: {
+          created_at: string
+          created_by_admin: string | null
+          id: string
+          new_status: string
+          previous_status: string | null
+          reason: string | null
+          store_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by_admin?: string | null
+          id?: string
+          new_status: string
+          previous_status?: string | null
+          reason?: string | null
+          store_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by_admin?: string | null
+          id?: string
+          new_status?: string
+          previous_status?: string | null
+          reason?: string | null
+          store_id?: string
+        }
+        Relationships: []
+      }
       store_reviews: {
         Row: {
           comment: string
