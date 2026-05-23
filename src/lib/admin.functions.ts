@@ -250,17 +250,45 @@ export const updateStoreModeration = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data }) => {
-    await requireAdminSession();
+    const session = await requireAdminSession();
+    const { data: prev } = await supabaseAdmin
+      .from("stores")
+      .select("status")
+      .eq("id", data.storeId)
+      .maybeSingle();
     const patch = {
       status: data.status,
       rejection_reason: data.status === "rejected" ? (data.reason ?? null) : null,
-      banned_reason: data.status === "suspended" ? (data.reason ?? "مخالفة شروط المنصة") : null,
+      banned_reason:
+        data.status === "suspended" ? (data.reason ?? "مخالفة شروط المنصة") : null,
       approved_at: data.status === "active" ? new Date().toISOString() : null,
     };
     const { error } = await supabaseAdmin.from("stores").update(patch).eq("id", data.storeId);
     if (error) throw new Error("تعذر تحديث حالة المتجر");
+    await supabaseAdmin.from("store_moderation_logs").insert({
+      store_id: data.storeId,
+      previous_status: prev?.status ?? null,
+      new_status: data.status,
+      reason: data.reason ?? null,
+      created_by_admin: session.admin_id,
+    });
     return { ok: true };
   });
+
+export const getStoreModerationLogs = createServerFn({ method: "GET" })
+  .inputValidator((input) => z.object({ storeId: z.string().uuid() }).parse(input))
+  .handler(async ({ data }) => {
+    await requireAdminSession();
+    const { data: logs, error } = await supabaseAdmin
+      .from("store_moderation_logs")
+      .select("*")
+      .eq("store_id", data.storeId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    if (error) throw new Error("تعذر تحميل سجل الإجراءات");
+    return { logs: logs ?? [] };
+  });
+
 
 export const updateStoreSubscription = createServerFn({ method: "POST" })
   .inputValidator((input) =>

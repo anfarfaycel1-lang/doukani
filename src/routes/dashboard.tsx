@@ -96,7 +96,10 @@ function DashboardPage() {
   const [product, setProduct] = useState<ProductForm>(emptyProduct());
   const [editingId, setEditingId] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
-  const [tab, setTab] = useState<"overview" | "products" | "reports" | "support">("overview");
+  const [tab, setTab] = useState<
+    "overview" | "products" | "orders" | "customers" | "reports" | "support"
+  >("overview");
+
   const [support, setSupport] = useState({
     name: "",
     email: "",
@@ -329,7 +332,9 @@ function DashboardPage() {
           {(
             [
               ["overview", "نظرة عامة"],
-              ["products", "إدارة المنتجات"],
+              ["products", "المنتجات"],
+              ["orders", "الطلبات"],
+              ["customers", "العملاء"],
               ["reports", "التقارير المالية"],
               ["support", "الدعم الفني"],
             ] as const
@@ -343,6 +348,8 @@ function DashboardPage() {
             </button>
           ))}
         </nav>
+
+
 
         {(tab === "overview" || tab === "reports") && (
           <>
@@ -477,6 +484,108 @@ function DashboardPage() {
             </div>
           </section>
         )}
+
+        {tab === "orders" && (
+          <section className="rounded-2xl border border-border bg-card p-5">
+            <h2 className="mb-4 text-xl font-black">طلبات متجرك ({data.orders.length})</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-right text-muted-foreground">
+                  <tr>
+                    <th className="p-2">رقم الطلب</th>
+                    <th className="p-2">الحالة</th>
+                    <th className="p-2">المدينة</th>
+                    <th className="p-2">القطع</th>
+                    <th className="p-2">المجموع</th>
+                    <th className="p-2">الربح</th>
+                    <th className="p-2">الدفع</th>
+                    <th className="p-2">التاريخ</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.orders.map((o: any) => (
+                    <tr key={o.id} className="border-t border-border align-top">
+                      <td className="p-2 font-bold">{o.order_number}</td>
+                      <td className="p-2">
+                        <span className="rounded-full bg-secondary px-2 py-1 text-xs">
+                          {o.status}
+                        </span>
+                      </td>
+                      <td className="p-2">{o.city ?? "—"}</td>
+                      <td className="p-2 text-xs text-muted-foreground">
+                        {(o.order_items ?? []).length}
+                      </td>
+                      <td className="p-2">{Number(o.total).toLocaleString()} د.م</td>
+                      <td className="p-2 font-bold text-primary">
+                        {(Number(o.total) - Number(o.total_cost)).toLocaleString()} د.م
+                      </td>
+                      <td className="p-2 text-xs">{o.payment_method}</td>
+                      <td className="p-2 text-muted-foreground">{o.created_at?.slice(0, 10)}</td>
+                    </tr>
+                  ))}
+                  {data.orders.length === 0 && (
+                    <tr>
+                      <td colSpan={8} className="p-6 text-center text-muted-foreground">
+                        لا توجد طلبات في متجرك بعد.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+        {tab === "customers" && (
+          <section className="rounded-2xl border border-border bg-card p-5">
+            <h2 className="mb-4 text-xl font-black">عملاء متجرك ({data.customers.length})</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="text-right text-muted-foreground">
+                  <tr>
+                    <th className="p-2">الاسم</th>
+                    <th className="p-2">الهاتف</th>
+                    <th className="p-2">البريد</th>
+                    <th className="p-2">المدينة</th>
+                    <th className="p-2">الحالة</th>
+                    <th className="p-2">تاريخ الإضافة</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.customers.map((c: any) => (
+                    <tr key={c.id} className="border-t border-border">
+                      <td className="p-2 font-bold">{c.name}</td>
+                      <td className="p-2">{c.phone}</td>
+                      <td className="p-2 text-muted-foreground">{c.email ?? "—"}</td>
+                      <td className="p-2">{c.city ?? "—"}</td>
+                      <td className="p-2">
+                        {c.is_blacklisted ? (
+                          <span className="rounded-full bg-destructive/10 px-2 py-1 text-xs text-destructive">
+                            محظور
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-emerald-500/10 px-2 py-1 text-xs text-emerald-600">
+                            نشط
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-2 text-muted-foreground">{c.created_at?.slice(0, 10)}</td>
+                    </tr>
+                  ))}
+                  {data.customers.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="p-6 text-center text-muted-foreground">
+                        لم يسجل أي عميل في متجرك بعد.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+
+
 
         {tab === "products" && (
           <section className="grid gap-5 lg:grid-cols-[.9fr_1.1fr]">
