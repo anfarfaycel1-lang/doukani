@@ -389,70 +389,159 @@ function AdminPage() {
             >
               {data.financeByStore.map((row: any) => {
                 const store = data.stores.find((item: any) => item.id === row.storeId);
+                const reason = reasons[row.storeId] ?? "";
+                const setReason = (val: string) =>
+                  setReasons((prev) => ({ ...prev, [row.storeId]: val }));
+                const act = async (status: "active" | "suspended" | "rejected") => {
+                  if ((status === "suspended" || status === "rejected") && !reason.trim()) {
+                    alert("اكتب سبب المخالفة قبل التطبيق");
+                    return;
+                  }
+                  await moderationFn({
+                    data: { storeId: row.storeId, status, reason: reason || undefined },
+                  });
+                  setReason("");
+                  if (logs[row.storeId]) {
+                    const { logs: rows } = await logsFn({ data: { storeId: row.storeId } });
+                    setLogs((prev) => ({ ...prev, [row.storeId]: rows }));
+                  }
+                  await load();
+                };
+                const statusColor =
+                  row.status === "active"
+                    ? "text-emerald-600"
+                    : row.status === "suspended"
+                      ? "text-destructive"
+                      : row.status === "rejected"
+                        ? "text-orange-600"
+                        : "text-muted-foreground";
                 return (
-                  <tr key={row.storeId} className="border-t border-border">
-                    <td className="p-2">
-                      <b>{row.name}</b>
-                      <small className="block text-muted-foreground">/{row.slug}</small>
-                    </td>
-                    <td className="p-2 text-xs text-muted-foreground">
-                      {store?.owner_user_id?.slice(0, 8)}...
-                    </td>
-                    <td className="p-2">
-                      <select
-                        className="h-9 rounded-lg border border-input bg-background px-2"
-                        value={row.status}
-                        onChange={async (e) => {
-                          await moderationFn({
-                            data: {
-                              storeId: row.storeId,
-                              status: e.target.value as any,
-                              reason:
-                                e.target.value === "suspended" ? "مخالفة شروط المنصة" : undefined,
-                            },
-                          });
-                          await load();
-                        }}
-                      >
-                        {storeStatuses.map((status) => (
-                          <option key={status}>{status}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="p-2">
-                      <select
-                        className="h-9 rounded-lg border border-input bg-background px-2"
-                        value={store?.subscription_tier}
-                        onChange={async (e) => {
-                          await subscriptionFn({
-                            data: { storeId: row.storeId, tier: e.target.value as any },
-                          });
-                          await load();
-                        }}
-                      >
-                        {tiers.map((tier) => (
-                          <option key={tier}>{tier}</option>
-                        ))}
-                      </select>
-                    </td>
-                    <td className="p-2">{row.orders}</td>
-                    <td className="p-2">{Number(row.sales).toLocaleString()} د.م</td>
-                    <td className="p-2 font-bold text-primary">
-                      {Number(row.profit).toLocaleString()} د.م
-                    </td>
-                    <td className="p-2">
-                      <a
-                        className="text-sm font-bold text-primary"
-                        href={`/store/${row.slug}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        معاينة
-                      </a>
-                    </td>
-                  </tr>
+                  <Fragment key={row.storeId}>
+                    <tr className="border-t border-border align-top">
+                      <td className="p-2">
+                        <b>{row.name}</b>
+                        <small className="block text-muted-foreground">/{row.slug}</small>
+                        {store?.banned_reason && (
+                          <small className="mt-1 block text-destructive">
+                            محظور: {store.banned_reason}
+                          </small>
+                        )}
+                        {store?.rejection_reason && (
+                          <small className="mt-1 block text-orange-600">
+                            مرفوض: {store.rejection_reason}
+                          </small>
+                        )}
+                      </td>
+                      <td className="p-2 text-xs text-muted-foreground">
+                        {store?.owner_user_id?.slice(0, 8)}...
+                      </td>
+                      <td className={`p-2 font-bold ${statusColor}`}>{row.status}</td>
+                      <td className="p-2">
+                        <select
+                          className="h-9 rounded-lg border border-input bg-background px-2"
+                          value={store?.subscription_tier}
+                          onChange={async (e) => {
+                            await subscriptionFn({
+                              data: { storeId: row.storeId, tier: e.target.value as any },
+                            });
+                            await load();
+                          }}
+                        >
+                          {tiers.map((tier) => (
+                            <option key={tier}>{tier}</option>
+                          ))}
+                        </select>
+                      </td>
+                      <td className="p-2">{row.orders}</td>
+                      <td className="p-2">{Number(row.sales).toLocaleString()} د.م</td>
+                      <td className="p-2 font-bold text-primary">
+                        {Number(row.profit).toLocaleString()} د.م
+                      </td>
+                      <td className="p-2">
+                        <div className="flex flex-wrap items-center gap-1">
+                          <input
+                            value={reason}
+                            onChange={(e) => setReason(e.target.value)}
+                            placeholder="سبب الإجراء"
+                            className="h-9 w-40 rounded-lg border border-input bg-background px-2 text-xs"
+                          />
+                          {row.status !== "active" && (
+                            <button
+                              onClick={() => act("active")}
+                              title="إعادة التفعيل"
+                              className="rounded-lg bg-emerald-600 px-2 py-1 text-xs font-bold text-white"
+                            >
+                              تفعيل
+                            </button>
+                          )}
+                          {row.status !== "suspended" && (
+                            <button
+                              onClick={() => act("suspended")}
+                              title="تعليق/حظر"
+                              className="rounded-lg bg-destructive px-2 py-1 text-xs font-bold text-destructive-foreground"
+                            >
+                              حظر
+                            </button>
+                          )}
+                          {row.status !== "rejected" && (
+                            <button
+                              onClick={() => act("rejected")}
+                              title="رفض"
+                              className="rounded-lg bg-orange-500 px-2 py-1 text-xs font-bold text-white"
+                            >
+                              رفض
+                            </button>
+                          )}
+                          <button
+                            onClick={() => toggleLogs(row.storeId)}
+                            className="rounded-lg border border-border px-2 py-1 text-xs font-bold"
+                          >
+                            {expandedStore === row.storeId ? "إخفاء السجل" : "السجل"}
+                          </button>
+                          <a
+                            className="rounded-lg px-2 py-1 text-xs font-bold text-primary"
+                            href={`/store/${row.slug}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            معاينة
+                          </a>
+                        </div>
+                      </td>
+                    </tr>
+                    {expandedStore === row.storeId && (
+                      <tr className="border-t border-border bg-secondary/40">
+                        <td colSpan={8} className="p-3">
+                          <b className="text-sm">سجل إجراءات الإدارة</b>
+                          {(logs[row.storeId] ?? []).length === 0 ? (
+                            <p className="mt-2 text-xs text-muted-foreground">
+                              لا توجد إجراءات سابقة على هذا المتجر.
+                            </p>
+                          ) : (
+                            <ul className="mt-2 space-y-1 text-xs">
+                              {(logs[row.storeId] ?? []).map((log: any) => (
+                                <li
+                                  key={log.id}
+                                  className="rounded-lg border border-border bg-card p-2"
+                                >
+                                  <b>{log.previous_status ?? "—"}</b> ← <b>{log.new_status}</b>
+                                  {log.reason && (
+                                    <span className="text-muted-foreground"> · {log.reason}</span>
+                                  )}
+                                  <span className="block text-muted-foreground">
+                                    {new Date(log.created_at).toLocaleString("ar")}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </Fragment>
                 );
               })}
+
             </DataTable>
           </section>
         )}
