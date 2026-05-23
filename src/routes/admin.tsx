@@ -117,6 +117,24 @@ function AdminPage() {
   const supportFn = useServerFn(updateSupportTicket);
   const messageFn = useServerFn(markContactMessage);
   const contentFn = useServerFn(updatePlatformContent);
+  const logsFn = useServerFn(getStoreModerationLogs);
+
+  const [reasons, setReasons] = useState<Record<string, string>>({});
+  const [logs, setLogs] = useState<Record<string, any[]>>({});
+  const [expandedStore, setExpandedStore] = useState<string | null>(null);
+
+  const toggleLogs = async (storeId: string) => {
+    if (expandedStore === storeId) {
+      setExpandedStore(null);
+      return;
+    }
+    if (!logs[storeId]) {
+      const { logs: rows } = await logsFn({ data: { storeId } });
+      setLogs((prev) => ({ ...prev, [storeId]: rows }));
+    }
+    setExpandedStore(storeId);
+  };
+
 
   const [data, setData] = useState<AdminData | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
