@@ -332,7 +332,9 @@ function DashboardPage() {
           {(
             [
               ["overview", "نظرة عامة"],
-              ["products", "إدارة المنتجات"],
+              ["products", "المنتجات"],
+              ["orders", "الطلبات"],
+              ["customers", "العملاء"],
               ["reports", "التقارير المالية"],
               ["support", "الدعم الفني"],
             ] as const
@@ -346,6 +348,8 @@ function DashboardPage() {
             </button>
           ))}
         </nav>
+
+
 
         {(tab === "overview" || tab === "reports") && (
           <>
