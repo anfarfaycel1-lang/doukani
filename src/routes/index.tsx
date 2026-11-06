@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import logoAsset from "@/assets/dokani-logo.png.asset.json";
 import { Star, Package, ShoppingCart, BarChart3, Shield, Link2, Zap, ArrowLeft, Check } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -22,14 +21,14 @@ export const Route = createFileRoute("/")({
 function Logo() {
   return (
     <div className="flex items-center">
-      <img src={logoAsset.url} alt="دكاني Dokani" className="h-14 w-auto rounded-lg" />
+      <img src="/dokani-logo.png" alt="دكاني Dokani" className="h-14 w-auto rounded-lg" />
     </div>
   );
 }
 
 function Header() {
   return (
-    <header className="sticky top-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-border/60 bg-background/85 backdrop-blur-md">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4">
         <Logo />
         <nav className="hidden items-center gap-8 text-sm font-medium text-foreground/80 md:flex">
@@ -224,68 +223,3 @@ function Pricing() {
               </ul>
               <a
                 href="/login"
-                className={`mt-8 block text-center ${p.popular ? "btn-primary justify-center w-full" : "btn-ghost w-full"}`}
-              >
-                {p.cta}
-              </a>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function SocialProof() {
-  const stories = ["متاجر أزياء رفعت طلبات واتساب في أول شهر", "حرفيون يبيعون داخل المغرب بخطوة دفع واحدة", "تجار COD يتابعون الأرباح والمخزون يومياً"];
-  return (
-    <section className="px-4 py-20">
-      <div className="mx-auto max-w-6xl">
-        <div className="grid gap-4 sm:grid-cols-4">{[["+1200", "متجر"], ["+45K", "طلب"], ["42", "مدينة"], ["96%", "رضا"]].map(([v,l]) => <div key={l} className="rounded-2xl border border-border bg-card p-6 text-center"><strong className="text-4xl text-primary">{v}</strong><p className="mt-2 text-muted-foreground">{l}</p></div>)}</div>
-        <div className="mt-8 grid gap-4 md:grid-cols-3">{stories.map((story) => <article key={story} className="rounded-2xl border border-border bg-card p-6"><h3 className="font-black">قصة نجاح</h3><p className="mt-2 text-sm text-muted-foreground">{story}</p></article>)}</div>
-      </div>
-    </section>
-  );
-}
-
-function CTA() {
-  return (
-    <section className="px-4 py-20">
-      <div className="mx-auto max-w-4xl overflow-hidden rounded-3xl bg-gradient-to-br from-primary to-primary-light p-12 text-center text-primary-foreground shadow-2xl shadow-primary/30">
-        <h2 className="text-3xl font-black sm:text-4xl">جاهز لإطلاق متجرك؟</h2>
-        <p className="mt-3 text-primary-foreground/85">انضم لآلاف التجار المغاربة الذين يبيعون بنجاح عبر دكاني</p>
-        <a href="/login" className="mt-6 inline-flex items-center gap-2 rounded-xl bg-card px-6 py-3 font-bold text-primary shadow-lg transition hover:-translate-y-1">
-          <ArrowLeft className="h-4 w-4" />
-          أنشئ متجرك المجاني الآن
-        </a>
-      </div>
-    </section>
-  );
-}
-
-function Footer() {
-  return (
-    <footer id="about" className="border-t border-border px-4 py-10">
-      <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 text-sm text-muted-foreground sm:flex-row">
-        <Logo />
-        <p>© {new Date().getFullYear()} دكاني. جميع الحقوق محفوظة.</p>
-      </div>
-    </footer>
-  );
-}
-
-function Home() {
-  return (
-    <div className="min-h-screen">
-      <Header />
-      <main>
-        <Hero />
-        <Features />
-        <Pricing />
-        <SocialProof />
-        <CTA />
-      </main>
-      <Footer />
-    </div>
-  );
-}
