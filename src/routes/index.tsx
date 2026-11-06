@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import logoAsset from "@/assets/dokani-logo.png.asset.json";
 import { Star, Package, ShoppingCart, BarChart3, Shield, Link2, Zap, ArrowLeft, Check } from "lucide-react";
 
 export const Route = createFileRoute("/")({
@@ -20,11 +21,8 @@ export const Route = createFileRoute("/")({
 
 function Logo() {
   return (
-    <div className="flex items-center gap-2">
-      <div className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-primary-light to-primary text-primary-foreground shadow-md">
-        <Star className="h-5 w-5 fill-current" />
-      </div>
-      <span className="text-xl font-black tracking-tight text-primary">دكاني</span>
+    <div className="flex items-center">
+      <img src={logoAsset.url} alt="دكاني Dokani" className="h-14 w-auto rounded-lg" />
     </div>
   );
 }
